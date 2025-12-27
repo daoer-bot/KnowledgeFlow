@@ -1,0 +1,143 @@
+# KnowledgeFlow - AI 知识管理与内容创作助手
+# 从信息采集 → 智能处理 → AI 创作的完整闭环
+
+network:
+  name: "KnowledgeFlow"
+  mode: "centralized"
+  node_id: "knowledge-flow-1"
+
+  # Transport configuration
+  transports:
+    - type: "http"
+      config:
+        port: 8700
+        serve_studio: true
+        serve_mcp: true
+    - type: "grpc"
+      config:
+        port: 8600
+        max_message_size: 104857600
+        compression: "gzip"
+        keepalive_time: 60000
+        keepalive_timeout: 30000
+
+  manifest_transport: "http"
+  recommended_transport: "grpc"
+
+  # Security configuration
+  encryption_enabled: false
+
+  # Discovery configuration
+  discovery_interval: 10
+  discovery_enabled: true
+
+  # Connection management
+  max_connections: 10
+  connection_timeout: 30.0
+  retry_attempts: 3
+  heartbeat_interval: 60
+  agent_timeout: 180
+
+  # Messaging configuration
+  message_queue_size: 1000
+  message_timeout: 30.0
+  message_routing_enabled: true
+
+  # Authentication configuration
+  authentication:
+    type: "none"
+
+  # Mod configuration
+  mods:
+    # Thread messaging for knowledge flow
+    - name: "openagents.mods.workspace.messaging"
+      enabled: true
+      config:
+        default_channels:
+          - name: "通用频道"
+            description: "系统通知和状态公告"
+          - name: "灵感捕手"
+            description: "RSS和网页采集的新内容"
+          - name: "灵感采集"
+            description: "请求抓取指定URL"
+          - name: "创作工坊"
+            description: "内容创作空间（大纲和草稿）"
+
+        max_thread_depth: 5
+        thread_collapse_threshold: 10
+    
+    # Wiki mod for knowledge base
+    - name: "openagents.mods.workspace.wiki"
+      enabled: true
+      config:
+        # Page settings
+        max_pages_per_agent: 500
+        max_page_size: 1048576     # 1MB max page size
+        page_formats: ["markdown"]
+        
+        # Version control
+        enable_versioning: true
+        max_versions_per_page: 50
+        
+        # Organization
+        enable_categories: true
+        enable_tags: true
+        enable_search: true
+        
+        # Default categories for knowledge flow
+        default_categories:
+          - name: "tech-news"
+            description: "科技新闻"
+          - name: "ai-ml"
+            description: "AI和机器学习"
+          - name: "development"
+            description: "开发技术"
+          - name: "articles"
+            description: "创作文章"
+          - name: "outlines"
+            description: "文章大纲"
+
+    # Custom mods - 自定义看板 Mods
+    - name: "mods.content_stats"
+      enabled: true
+      config:
+        db_path: "data/knowledge-flow/content.db"
+
+    - name: "mods.rss_manager"
+      enabled: true
+      config:
+        db_path: "data/knowledge-flow/content.db"
+        feeds_config: "config/rss_feeds.yaml"
+
+    - name: "mods.creation_tracker"
+      enabled: true
+      config:
+        db_path: "data/knowledge-flow/content.db"
+
+# Network profile for discovery
+network_profile:
+  discoverable: true
+  name: "KnowledgeFlow"
+  description: "AI-powered knowledge management and content creation assistant - from content collection to intelligent writing"
+  tags:
+    - "knowledge-management"
+    - "content-creation"
+    - "ai-assistant"
+    - "rss"
+    - "writing"
+  categories:
+    - "productivity"
+    - "content"
+    - "ai"
+  country: "Worldwide"
+  required_openagents_version: "0.6.13"
+  capacity: 10
+  host: "0.0.0.0"
+  port: 8700
+
+# Global settings
+log_level: "INFO"
+data_dir: "./data/knowledge-flow"
+
+runtime_limit: null
+shutdown_timeout: 30

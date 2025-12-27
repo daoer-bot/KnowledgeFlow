@@ -1,0 +1,58 @@
+# RSS 订阅源配置
+# KnowledgeFlow 会自动从这些源采集内容
+
+feeds:
+  # Hacker News API 源（优先级最高，更新最快）
+  - name: "Hacker News Top Stories"
+    type: "hackernews_api"
+    api_type: "top"
+    category: "tech-news"
+    enabled: true
+    fetch_count: 5
+    
+  # 技术新闻 RSS
+  - name: "Hacker News RSS"
+    url: "https://hnrss.org/frontpage"
+    category: "tech-news"
+    enabled: false  # 已有 API 源，禁用 RSS 避免重复
+    
+  - name: "TechCrunch"
+    url: "https://techcrunch.com/feed/"
+    category: "tech-news"
+    enabled: true
+    
+  # AI 和机器学习
+  - name: "OpenAI Blog"
+    url: "https://openai.com/blog/rss/"
+    category: "ai-ml"
+    enabled: true
+    
+  - name: "Anthropic News"
+    url: "https://www.anthropic.com/news/rss.xml"
+    category: "ai-ml"
+    enabled: true
+    
+  # 开发者博客
+  - name: "GitHub Blog"
+    url: "https://github.blog/feed/"
+    category: "development"
+    enabled: true
+    
+  - name: "Dev.to"
+    url: "https://dev.to/feed"
+    category: "development"
+    enabled: false  # 可选，内容较多
+
+# 采集配置
+collection:
+  # 采集间隔（分钟）
+  interval: 30
+  
+  # 每次采集的最大文章数
+  max_items_per_feed: 10
+  
+  # 全文提取超时（秒）
+  content_timeout: 30
+  
+  # 最小文章长度（字符）
+  min_content_length: 200

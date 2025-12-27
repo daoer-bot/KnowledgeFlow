@@ -1,0 +1,24 @@
+# KnowledgeFlow - AI 知识管理与内容创作助手
+# MVP 阶段依赖项
+
+# OpenAgents 框架
+openagents-sdk>=0.1.0
+
+# LLM 客户端
+openai>=1.0.0
+
+# RSS 和网页抓取
+feedparser>=6.0.0      # RSS feed 解析
+trafilatura>=2.0.0     # 网页内容提取和全文抓取
+requests>=2.31.0       # HTTP 请求（用于 API 调用）
+
+# 数据存储
+aiosqlite>=0.19.0
+
+# 工具库
+python-dateutil>=2.8.0
+pyyaml>=6.0.0
+python-dotenv>=1.0.0
+
+# 日志
+loguru>=0.7.0
