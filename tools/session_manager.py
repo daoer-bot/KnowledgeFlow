@@ -95,7 +95,7 @@ class CreationSession:
         self.review_scores = data.get('review_scores', {})  # {technical: 8, business: 7, ux: 9}
         self.review_suggestions = data.get('review_suggestions', [])  # 改进建议列表
         self.optimization_count = data.get('optimization_count', 0)  # 优化次数
-        # 完整评审数据（临时存储，用于按需展示详细报告，不持久化）
+        # 完整评审数据（用于按需展示详细报告）
         self.full_reviews = data.get('full_reviews', {})
 
         # 时间戳
@@ -124,6 +124,7 @@ class CreationSession:
             'review_scores': self.review_scores,
             'review_suggestions': self.review_suggestions,
             'optimization_count': self.optimization_count,
+            'full_reviews': self.full_reviews,
             'created_at': self.created_at,
             'updated_at': self.updated_at,
             'expires_at': self.expires_at
@@ -193,6 +194,7 @@ class SessionManager:
                 review_scores TEXT,
                 review_suggestions TEXT,
                 optimization_count INTEGER DEFAULT 0,
+                full_reviews TEXT,
 
                 -- 时间戳
                 created_at DATETIME,
@@ -216,6 +218,14 @@ class SessionManager:
             CREATE INDEX IF NOT EXISTS idx_session_v2_expires
             ON creation_sessions_v2(expires_at)
         """)
+
+        # 迁移：为已存在的表添加 full_reviews 列（如果不存在）
+        try:
+            cursor.execute("ALTER TABLE creation_sessions_v2 ADD COLUMN full_reviews TEXT")
+            logger.info("✅ 已添加 full_reviews 列")
+        except sqlite3.OperationalError:
+            # 列已存在，忽略错误
+            pass
 
         conn.commit()
         conn.close()
@@ -242,6 +252,7 @@ class SessionManager:
         data['section_contents'] = self._parse_json_field(data.get('section_contents'), {})
         data['review_scores'] = self._parse_json_field(data.get('review_scores'), {})
         data['review_suggestions'] = self._parse_json_field(data.get('review_suggestions'), [])
+        data['full_reviews'] = self._parse_json_field(data.get('full_reviews'), {})
         return CreationSession(data)
 
     async def get_or_create_session(self, user_id: str) -> CreationSession:
@@ -336,6 +347,7 @@ class SessionManager:
                 review_scores = ?,
                 review_suggestions = ?,
                 optimization_count = ?,
+                full_reviews = ?,
                 updated_at = ?
             WHERE id = ?
         """, (
@@ -355,6 +367,7 @@ class SessionManager:
             json.dumps(session.review_scores) if session.review_scores else None,
             json.dumps(session.review_suggestions) if session.review_suggestions else None,
             session.optimization_count,
+            json.dumps(session.full_reviews) if session.full_reviews else None,
             datetime.now().isoformat(),
             session.id
         ))

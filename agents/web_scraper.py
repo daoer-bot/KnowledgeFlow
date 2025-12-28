@@ -20,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from openagents.agents.worker_agent import WorkerAgent, on_event
+from openagents.models.event import Event
 from tools.content_tools import WebScraper
 from tools.database import get_database
 import logging
@@ -41,33 +42,43 @@ class WebScraperAgent(WorkerAgent):
         """Agent 启动时执行"""
         logger.info("Web Scraper Agent started")
         
-        await self._send_channel_message(
-            "通用频道",
-            "🤖 Web Scraper 已上线\n\n使用方法：在 #scraper-requests 频道发送 URL 即可抓取"
-        )
+        try:
+            await self._send_channel_message(
+                "通用频道",
+                "🤖 Web Scraper 已上线\n\n使用方法：在 #灵感采集 频道发送 URL 即可抓取"
+            )
+        except Exception as e:
+            logger.error(f"Failed to send startup message: {str(e)}")
     
     async def on_shutdown(self):
         """Agent 关闭时执行"""
         logger.info("🌐 网页抓取器 已停止")
     
-    @on_event("workspace.messaging.channel_message_created")
+    @on_event("thread.channel_message.notification")
     async def handle_channel_message(self, event):
         """处理频道消息事件"""
         try:
-            payload = event.get("payload", {})
-            channel = payload.get("channel")
-            message_text = payload.get("text", "")
-            thread_id = payload.get("thread_id")
+            # event 是 EventContext 对象，需要通过属性访问
+            payload = event.payload if hasattr(event, 'payload') else {}
             
-            # 只处理 scraper-requests 频道的消息
+            channel = payload.get("channel") if isinstance(payload, dict) else None
+            
+            # 消息内容在 content.text 中
+            content = payload.get("content", {}) if isinstance(payload, dict) else {}
+            message_text = content.get("text", "") if isinstance(content, dict) else ""
+            
+            thread_id = payload.get("thread_id") if isinstance(payload, dict) else None
+            agent_id = payload.get("source_id") or payload.get("agent_id") if isinstance(payload, dict) else None
+            
+            # 只处理 灵感采集 频道的消息
             if channel != "灵感采集":
                 return
             
             # 忽略自己发送的消息
-            if payload.get("agent_id") == self.agent_id:
+            if agent_id == self.agent_id:
                 return
             
-            logger.info(f"Received scrape request: {message_text[:100]}")
+            logger.info(f"Received scrape request: {message_text[:100] if message_text else '(empty)'}")
             
             # 提取 URL
             urls = self._extract_urls(message_text)
@@ -183,14 +194,30 @@ class WebScraperAgent(WorkerAgent):
     def _extract_urls(self, text: str) -> list:
         """从文本中提取 URL"""
         # 匹配 http:// 或 https:// 开头的 URL
-        pattern = r'https?://[^\s<>"{}|\\^`\[\]]+'
+        pattern = r'https?://[^\s<>"\{\}|\\^`\[\]]+'
         urls = re.findall(pattern, text)
+        logger.info(f"Extracted URLs from text: {urls}")
         return urls
     
     async def _emit_content_discovered(self, content_id: str, content_data: dict):
         """发送 content.discovered 事件"""
-        # 事件系统暂时禁用，使用频道消息通知
-        logger.debug(f"Content discovered: {content_id}")
+        try:
+            # 发送事件通知其他 Agent
+            event = Event(
+                event_name="content.discovered",
+                source_id=self.agent_id,
+                payload={
+                    "content_id": content_id,
+                    "title": content_data.get('title'),
+                    "url": content_data.get('url'),
+                    "source": content_data.get('source'),
+                    "source_type": content_data.get('source_type')
+                }
+            )
+            await self.send_event(event)
+            logger.info(f"Emitted content.discovered event for: {content_id}")
+        except Exception as e:
+            logger.error(f"Failed to emit content.discovered event: {str(e)}")
     
     async def _notify_new_content(self, content_data: dict):
         """发送新内容通知到频道"""
@@ -216,11 +243,15 @@ class WebScraperAgent(WorkerAgent):
         try:
             messaging = self.client.mod_adapters.get("openagents.mods.workspace.messaging")
             if messaging:
-                await messaging.send_channel_message(
-                    channel=channel,
-                    text=text,
-                    thread_id=thread_id
-                )
+                # 构建参数字典，只在 thread_id 存在时添加
+                kwargs = {
+                    "channel": channel,
+                    "text": text
+                }
+                if thread_id is not None:
+                    kwargs["thread_id"] = thread_id
+                
+                await messaging.send_channel_message(**kwargs)
         except Exception as e:
             logger.error(f"Failed to send channel message: {str(e)}")
 
